@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한글 타자 연습용 키보드</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+        }
+
+        /* 키보드 버튼 기본 스타일 (입체감) */
+        .key-btn {
+            background-color: #334155; /* Slate 700 */
+            border-bottom: 5px solid #1e293b; /* Slate 800 */
+            border-radius: 0.5rem;
+            color: white;
+            transition: all 0.05s ease-out;
+            position: relative;
+            user-select: none;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 키보드가 눌렸을 때 (빛나는 효과) */
+        .key-btn.active {
+            background-color: #0ea5e9; /* Sky 500 */
+            border-bottom-width: 0px;
+            transform: translateY(5px);
+            box-shadow: 0 0 20px 2px rgba(14, 165, 233, 0.8), inset 0 2px 4px rgba(255,255,255,0.3);
+            color: #ffffff;
+        }
+
+        /* 눌렸을 때 텍스트 색상 변경 (가독성 유지) */
+        .key-btn.active .text-gray-400 { color: #e0f2fe; }
+        .key-btn.active .text-orange-300 { color: #fde047; }
+        .key-btn.active .text-gray-300 { color: #ffffff; }
+
+        /* 입력창 스크롤바 커스텀 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- 알림 모달 -->
+    <div id="alert-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 transition-opacity">
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-2xl max-w-sm w-full text-center">
+            <p id="alert-text" class="text-white mb-6 text-lg font-medium"></p>
+            <button id="alert-close" class="bg-sky-500 hover:bg-sky-600 text-white font-bold px-6 py-2 rounded-lg transition-colors">확인</button>
+        </div>
+    </div>
+
+    <!-- 우측 상단 설정창 -->
+    <div class="absolute top-4 right-4 flex flex-col items-end gap-2 z-20 w-64">
+        <!-- 설정 토글 버튼 (톱니바퀴 아이콘) -->
+        <button id="settings-toggle-btn" class="bg-slate-800 hover:bg-slate-700 text-white p-2.5 rounded-full shadow-lg border border-slate-700 transition-colors flex items-center justify-center self-end" title="설정 메뉴 열기/닫기">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+        </button>
+
+        <!-- 설정 패널 (기본적으로 숨김 처리) -->
+        <div id="settings-panel" class="hidden flex-col gap-2 w-full transition-opacity">
+            <div class="flex bg-slate-800 rounded-lg p-1 shadow-lg border border-slate-700 justify-end">
+                <button id="mode-show" class="px-4 py-2 rounded-md bg-sky-500 text-white text-sm font-bold shadow transition-all flex-1">글씨 남기기</button>
+                <button id="mode-hide" class="px-4 py-2 rounded-md text-slate-400 text-sm font-bold hover:text-white hover:bg-slate-700 transition-all flex-1">글씨 숨기기</button>
+            </div>
+            <!-- 확장 설정 패널 -->
+            <div class="bg-slate-800 rounded-lg p-4 shadow-lg border border-slate-700 flex flex-col gap-4">
+                <label class="flex items-center gap-2 text-slate-300 text-sm cursor-pointer hover:text-white transition-colors">
+                    <input type="checkbox" id="shortcut-toggle" class="w-4 h-4 rounded bg-slate-900 border-slate-600 focus:ring-sky-500 text-sky-500 cursor-pointer">
+                    <span class="leading-tight">브라우저 단축키 차단<br><span class="text-[10px] text-slate-400">(Ctrl+D 등 방지)</span></span>
+                </label>
+                <div class="flex flex-col gap-2 border-t border-slate-700 pt-3">
+                    <span class="text-slate-400 text-xs font-bold">타건음 설정</span>
+                    <select id="sound-select" class="bg-slate-900 text-white text-sm rounded p-2 border border-slate-600 outline-none focus:border-sky-500 cursor-pointer">
+                        <option value="none">소리 없음</option>
+                        <option value="mech">기계식 키보드 (딸깍)</option>
+                        <option value="soft">부드러운 소리 (물방울)</option>
+                        <option value="typewriter">타자기 (철칵)</option>
+                        <option value="custom" id="custom-sound-opt" class="hidden">내 커스텀 소리</option>
+                    </select>
+                    <label class="text-xs text-sky-400 cursor-pointer hover:text-sky-300 text-right mt-1 font-semibold flex justify-end items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        내 PC 소리 추가 (800KB↓)
+                        <input type="file" id="sound-upload" accept="audio/*" class="hidden">
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="w-full max-w-5xl space-y-6">
+        <!-- 상단 헤더 -->
+        <div class="text-center space-y-2">
+            <h1 id="app-title" contenteditable="true" spellcheck="false" class="text-4xl font-black text-white tracking-tight drop-shadow-md outline-none focus:bg-slate-800 rounded px-4 py-2 transition-all inline-block border-b-2 border-transparent hover:border-slate-600 cursor-text min-w-[300px]">
+                한글 타자 시뮬레이터
+            </h1>
+            <p class="text-slate-400 text-lg">아래 텍스트 창을 클릭하고 타자를 쳐보세요. 제목을 클릭해 변경할 수도 있습니다.</p>
+        </div>
+
+        <!-- 타이핑 입력창 (실제 입력이 이루어지는 곳) -->
+        <div class="bg-slate-800 p-2 rounded-2xl shadow-xl border border-slate-700 focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-500/50 transition-all relative flex flex-col gap-2">
+            
+            <!-- Gemini AI 기능 툴바 -->
+            <div class="flex flex-wrap gap-2 px-1">
+                <button id="btn-generate-quote" class="bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold py-1.5 px-4 rounded-lg shadow transition-colors flex items-center gap-1">
+                    ✨ 한 문장 쓰기
+                </button>
+                <button id="btn-generate-practice" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-1.5 px-4 rounded-lg shadow transition-colors flex items-center gap-1">
+                    ✨ 연습 문장 생성
+                </button>
+                <button id="btn-continue-writing" class="bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-bold py-1.5 px-4 rounded-lg shadow transition-colors flex items-center gap-1">
+                    ✨ 이어쓰기
+                </button>
+                <button id="btn-fix-grammar" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold py-1.5 px-4 rounded-lg shadow transition-colors flex items-center gap-1">
+                    ✨ 맞춤법 교정
+                </button>
+            </div>
+
+            <!-- 타이핑 통계 대시보드 (한컴타자 스타일) -->
+            <div class="flex justify-between items-center bg-slate-900 px-4 py-3 rounded-xl border border-slate-700 shadow-inner mt-1 mb-1">
+                <div class="text-slate-300 font-bold flex flex-wrap gap-4 sm:gap-6 text-sm sm:text-base">
+                    <span class="flex items-center gap-1">⏱️ 진행 시간: <span id="stat-time" class="text-white font-mono text-lg">00:00</span></span>
+                    <span class="flex items-center gap-1">⚡ 현재 타수: <span id="stat-cpm" class="text-sky-400 font-mono text-lg">0</span> <span class="text-xs font-normal text-slate-400">타/분</span></span>
+                    <span class="flex items-center gap-1">🎯 정확도: <span id="stat-acc" class="text-emerald-400 font-mono text-lg">100</span> <span class="text-xs font-normal text-slate-400">%</span></span>
+                </div>
+                <button id="btn-reset-stats" class="text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg shadow transition-colors font-bold whitespace-nowrap">새로고침</button>
+            </div>
+
+            <!-- 연습 문장 표시 영역 (기본 숨김) -->
+            <div id="practice-display" class="hidden bg-indigo-900/40 border border-indigo-500/50 rounded-xl p-4 mx-1 relative shadow-inner">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-indigo-300 text-sm font-bold flex items-center gap-1">📖 아래 문장을 따라 쳐보세요</span>
+                    <button id="btn-close-practice" class="text-indigo-400 hover:text-white transition-colors text-xs bg-indigo-900/50 px-2 py-1 rounded">닫기 ✖</button>
+                </div>
+                <p id="practice-text" class="text-indigo-100 text-lg whitespace-pre-wrap leading-relaxed font-medium tracking-wide"></p>
+            </div>
+
+            <textarea 
+                id="type-area" 
+                class="w-full h-32 bg-slate-900 text-white text-2xl p-4 rounded-xl resize-none outline-none placeholder-slate-600 font-medium transition-colors"
+                placeholder="여기에 자유롭게 글을 써보세요..."
+                autofocus
+            ></textarea>
+            
+            <!-- 글씨 숨기기 모드 오버레이 -->
+            <div id="hide-overlay" class="absolute inset-2 bg-slate-900/95 rounded-xl flex flex-col items-center justify-center pointer-events-none opacity-0 transition-opacity duration-300 z-10">
+                <span class="text-sky-400 text-2xl font-black mb-2 drop-shadow-md">자판 위치 확인 모드</span>
+                <span class="text-slate-300 text-lg">타자를 쳐도 글씨가 남지 않습니다. 화면의 키보드만 확인하세요!</span>
+            </div>
+        </div>
+
+        <!-- 가상 키보드 영역 -->
+        <div class="bg-slate-800 p-4 rounded-2xl shadow-2xl border-t border-slate-700/50">
+            <div id="keyboard" class="flex flex-col gap-2 w-full">
+                <!-- JavaScript를 통해 키보드 레이아웃이 여기에 생성됩니다 -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 모달 알림 함수
+        function showAlert(msg) {
+            document.getElementById('alert-text').innerText = msg;
+            document.getElementById('alert-modal').classList.remove('hidden');
+        }
+        document.getElementById('alert-close').addEventListener('click', () => {
+            document.getElementById('alert-modal').classList.add('hidden');
+        });
+
+        // Firebase 초기화 및 상태 관리
+        let db, auth, userId, appId;
+        const initFirebase = async () => {
+            if (typeof __firebase_config === 'undefined') return;
+            try {
+                const firebaseConfig = JSON.parse(__firebase_config);
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        await loadSettings();
+                    }
+                });
+            } catch (e) {
+                console.error("Firebase init error:", e);
+            }
+        };
+
+        // 설정 저장 헬퍼
+        async function saveSettings(updates) {
+            if (!userId || !db) return;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'users', userId, 'user_preferences', 'settings');
+                await setDoc(docRef, updates, { merge: true });
+            } catch(e) {
+                console.error("Save error:", e);
+            }
+        }
+
+        // 오디오 시스템
+        const sounds = {
+            mech: new Audio('https://actions.google.com/sounds/v1/alarms/click_clock.ogg'),
+            soft: new Audio('https://actions.google.com/sounds/v1/water/water_drop.ogg'),
+            typewriter: new Audio('https://actions.google.com/sounds/v1/office/typewriter_keystroke.ogg'),
+            custom: null
+        };
+        let currentSound = 'none';
+        let blockShortcuts = false;
+
+        function playTypingSound() {
+            if (currentSound === 'none') return;
+            const audio = sounds[currentSound];
+            if (audio) {
+                const clone = audio.cloneNode();
+                clone.volume = 0.6;
+                clone.play().catch(() => {}); // 브라우저 자동재생 정책 무시
+            }
+        }
+
+        // 설정 로드
+        async function loadSettings() {
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'users', userId, 'user_preferences', 'settings');
+                const snap = await getDoc(docRef);
+                if (snap.exists()) {
+                    const data = snap.data();
+                    
+                    // 제목 로드
+                    if (data.title) {
+                        document.getElementById('app-title').innerText = data.title;
+                    }
+                    
+                    // 단축키 차단 설정 로드
+                    if (data.blockShortcuts !== undefined) {
+                        blockShortcuts = data.blockShortcuts;
+                        document.getElementById('shortcut-toggle').checked = blockShortcuts;
+                    }
+                    
+                    // 커스텀 사운드 로드
+                    if (data.customSound) {
+                        sounds.custom = new Audio(data.customSound);
+                        document.getElementById('custom-sound-opt').classList.remove('hidden');
+                    }
+                    
+                    // 선택된 사운드 로드
+                    if (data.selectedSound) {
+                        currentSound = data.selectedSound;
+                        document.getElementById('sound-select').value = currentSound;
+                    }
+                }
+            } catch (e) {
+                console.error("Load error:", e);
+            }
+        }
+
+        // UI 이벤트 리스너 등록 (제목 수정)
+        document.getElementById('app-title').addEventListener('blur', (e) => {
+            saveSettings({ title: e.target.innerText });
+        });
+        document.getElementById('app-title').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.target.blur(); // 엔터 입력시 커서 해제 후 저장
+            }
+        });
+
+        // UI 이벤트 리스너 등록 (설정 패널 토글)
+        const settingsToggleBtn = document.getElementById('settings-toggle-btn');
+        const settingsPanel = document.getElementById('settings-panel');
+
+        settingsToggleBtn.addEventListener('click', () => {
+            if (settingsPanel.classList.contains('hidden')) {
+                settingsPanel.classList.remove('hidden');
+                settingsPanel.classList.add('flex');
+            } else {
+                settingsPanel.classList.add('hidden');
+                settingsPanel.classList.remove('flex');
+            }
+        });
+
+        // UI 이벤트 리스너 등록 (설정 패널)
+        document.getElementById('shortcut-toggle').addEventListener('change', (e) => {
+            blockShortcuts = e.target.checked;
+            saveSettings({ blockShortcuts: blockShortcuts });
+        });
+
+        document.getElementById('sound-select').addEventListener('change', (e) => {
+            currentSound = e.target.value;
+            saveSettings({ selectedSound: currentSound });
+            playTypingSound(); // 테스트 재생
+        });
+
+        document.getElementById('sound-upload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // 데이터베이스 제한(1MB)을 고려해 800KB로 제한
+            if (file.size > 800 * 1024) {
+                showAlert('파일 크기가 너무 큽니다. 800KB 이하의 오디오 파일을 선택해주세요.');
+                e.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                const base64Audio = ev.target.result;
+                sounds.custom = new Audio(base64Audio);
+                document.getElementById('custom-sound-opt').classList.remove('hidden');
+                document.getElementById('sound-select').value = 'custom';
+                currentSound = 'custom';
+                
+                await saveSettings({ 
+                    customSound: base64Audio,
+                    selectedSound: 'custom'
+                });
+                
+                showAlert('커스텀 타건음이 성공적으로 등록되었습니다!');
+                playTypingSound(); // 테스트 재생
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Firebase 실행
+        initFirebase();
+
+        // 한글 2벌식 표준 키보드 레이아웃 데이터
+        const kbLayout = [
+            [
+                { code: 'Escape', label: 'Esc', flex: 1.2 },
+                { code: 'F1', label: 'F1', flex: 1 },
+                { code: 'F2', label: 'F2', flex: 1 },
+                { code: 'F3', label: 'F3', flex: 1 },
+                { code: 'F4', label: 'F4', flex: 1 },
+                { code: 'F5', label: 'F5', flex: 1 },
+                { code: 'F6', label: 'F6', flex: 1 },
+                { code: 'F7', label: 'F7', flex: 1 },
+                { code: 'F8', label: 'F8', flex: 1 },
+                { code: 'F9', label: 'F9', flex: 1 },
+                { code: 'F10', label: 'F10', flex: 1 },
+                { code: 'F11', label: 'F11', flex: 1 },
+                { code: 'F12', label: 'F12', flex: 1 }
+            ],
+            [
+                { code: 'Backquote', main: '`', shift: '~' },
+                { code: 'Digit1', main: '1', shift: '!' },
+                { code: 'Digit2', main: '2', shift: '@' },
+                { code: 'Digit3', main: '3', shift: '#' },
+                { code: 'Digit4', main: '4', shift: '$' },
+                { code: 'Digit5', main: '5', shift: '%' },
+                { code: 'Digit6', main: '6', shift: '^' },
+                { code: 'Digit7', main: '7', shift: '&' },
+                { code: 'Digit8', main: '8', shift: '*' },
+                { code: 'Digit9', main: '9', shift: '(' },
+                { code: 'Digit0', main: '0', shift: ')' },
+                { code: 'Minus', main: '-', shift: '_' },
+                { code: 'Equal', main: '=', shift: '+' },
+                { code: 'Backspace', label: 'Backspace', flex: 2 }
+            ],
+            [
+                { code: 'Tab', label: 'Tab', flex: 1.5 },
+                { code: 'KeyQ', main: 'ㅂ', shift: 'ㅃ', en: 'Q' },
+                { code: 'KeyW', main: 'ㅈ', shift: 'ㅉ', en: 'W' },
+                { code: 'KeyE', main: 'ㄷ', shift: 'ㄸ', en: 'E' },
+                { code: 'KeyR', main: 'ㄱ', shift: 'ㄲ', en: 'R' },
+                { code: 'KeyT', main: 'ㅅ', shift: 'ㅆ', en: 'T' },
+                { code: 'KeyY', main: 'ㅛ', en: 'Y' },
+                { code: 'KeyU', main: 'ㅕ', en: 'U' },
+                { code: 'KeyI', main: 'ㅑ', en: 'I' },
+                { code: 'KeyO', main: 'ㅐ', shift: 'ㅒ', en: 'O' },
+                { code: 'KeyP', main: 'ㅔ', shift: 'ㅖ', en: 'P' },
+                { code: 'BracketLeft', main: '[', shift: '{' },
+                { code: 'BracketRight', main: ']', shift: '}' },
+                { code: 'Backslash', main: '\\', shift: '|', flex: 1.5 }
+            ],
+            [
+                { code: 'CapsLock', label: 'Caps Lock', flex: 1.75 },
+                { code: 'KeyA', main: 'ㅁ', en: 'A' },
+                { code: 'KeyS', main: 'ㄴ', en: 'S' },
+                { code: 'KeyD', main: 'ㅇ', en: 'D' },
+                { code: 'KeyF', main: 'ㄹ', en: 'F' },
+                { code: 'KeyG', main: 'ㅎ', en: 'G' },
+                { code: 'KeyH', main: 'ㅗ', en: 'H' },
+                { code: 'KeyJ', main: 'ㅓ', en: 'J' },
+                { code: 'KeyK', main: 'ㅏ', en: 'K' },
+                { code: 'KeyL', main: 'ㅣ', en: 'L' },
+                { code: 'Semicolon', main: ';', shift: ':' },
+                { code: 'Quote', main: "'", shift: '"' },
+                { code: 'Enter', label: 'Enter', flex: 2.25 }
+            ],
+            [
+                { code: 'ShiftLeft', label: 'Shift', flex: 2.25 },
+                { code: 'KeyZ', main: 'ㅋ', en: 'Z' },
+                { code: 'KeyX', main: 'ㅌ', en: 'X' },
+                { code: 'KeyC', main: 'ㅊ', en: 'C' },
+                { code: 'KeyV', main: 'ㅍ', en: 'V' },
+                { code: 'KeyB', main: 'ㅠ', en: 'B' },
+                { code: 'KeyN', main: 'ㅜ', en: 'N' },
+                { code: 'KeyM', main: 'ㅡ', en: 'M' },
+                { code: 'Comma', main: ',', shift: '<' },
+                { code: 'Period', main: '.', shift: '>' },
+                { code: 'Slash', main: '/', shift: '?' },
+                { code: 'ShiftRight', label: 'Shift', flex: 2.75 }
+            ],
+            [
+                { code: 'ControlLeft', label: 'Ctrl', flex: 1.5 },
+                { code: 'MetaLeft', label: 'Win', flex: 1.25 },
+                { code: 'AltLeft', label: 'Alt', flex: 1.25 },
+                { code: 'Space', label: 'Space', flex: 6 },
+                { code: 'AltRight', label: '한/영', flex: 1.25 },
+                { code: 'ControlRight', label: '한자', flex: 1.25 }
+            ]
+        ];
+
+        // 키보드 렌더링 함수
+        function renderKeyboard() {
+            const container = document.getElementById('keyboard');
+            
+            kbLayout.forEach(row => {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'flex gap-2 w-full';
+                
+                row.forEach(key => {
+                    const keyEl = document.createElement('div');
+                    keyEl.id = `key-${key.code}`;
+                    keyEl.style.flex = key.flex || 1;
+                    keyEl.className = 'key-btn h-14 min-w-[2.5rem] flex items-center justify-center';
+                    
+                    // 특수키 (글자 없이 레이블만 있는 경우)
+                    if (key.label) {
+                        keyEl.innerHTML = `<span class="text-sm font-bold tracking-wider">${key.label}</span>`;
+                    } 
+                    // 일반 키 (한글, 영문, 기호)
+                    else {
+                        const topL = key.shift || '';
+                        const botL = key.main || '';
+                        const botR = key.en || '';
+                        
+                        let html = '';
+                        // 왼쪽 위 (쌍자음, 특수기호)
+                        if (topL) {
+                            const colorClass = botR ? 'text-orange-300' : 'text-gray-300';
+                            html += `<span class="absolute top-1 left-2 text-xs font-bold ${colorClass}">${topL}</span>`;
+                        }
+                        // 왼쪽 아래 (메인 한글, 숫자)
+                        if (botL) {
+                            html += `<span class="absolute bottom-1 left-2 text-[16px] font-black">${botL}</span>`;
+                        }
+                        // 오른쪽 아래 (영문 알파벳)
+                        if (botR) {
+                            html += `<span class="absolute bottom-1 right-2 text-[12px] font-semibold text-gray-400">${botR}</span>`;
+                        }
+                        
+                        keyEl.innerHTML = html;
+                    }
+                    rowEl.appendChild(keyEl);
+                });
+                container.appendChild(rowEl);
+            });
+        }
+
+        // 페이지 로드 시 키보드 그리기
+        renderKeyboard();
+
+        // 모드 설정 로직
+        const btnShow = document.getElementById('mode-show');
+        const btnHide = document.getElementById('mode-hide');
+        const typeArea = document.getElementById('type-area');
+        const hideOverlay = document.getElementById('hide-overlay');
+        let isHideMode = false;
+
+        btnShow.addEventListener('click', () => {
+            isHideMode = false;
+            // 버튼 스타일 변경
+            btnShow.className = 'px-4 py-2 rounded-md bg-sky-500 text-white text-sm font-bold shadow transition-all';
+            btnHide.className = 'px-4 py-2 rounded-md text-slate-400 text-sm font-bold hover:text-white hover:bg-slate-700 transition-all';
+            
+            // 텍스트창 및 오버레이 상태 변경
+            typeArea.classList.remove('text-transparent', 'caret-transparent');
+            typeArea.classList.add('text-white');
+            hideOverlay.classList.remove('opacity-100');
+            hideOverlay.classList.add('opacity-0');
+            
+            typeArea.value = ''; // 모드 전환 시 깔끔하게 초기화
+            typeArea.focus();
+        });
+
+        btnHide.addEventListener('click', () => {
+            isHideMode = true;
+            // 버튼 스타일 변경
+            btnHide.className = 'px-4 py-2 rounded-md bg-sky-500 text-white text-sm font-bold shadow transition-all';
+            btnShow.className = 'px-4 py-2 rounded-md text-slate-400 text-sm font-bold hover:text-white hover:bg-slate-700 transition-all';
+            
+            // 텍스트창 및 오버레이 상태 변경 (글씨 투명화, 커서 숨김)
+            typeArea.classList.remove('text-white');
+            typeArea.classList.add('text-transparent', 'caret-transparent');
+            hideOverlay.classList.remove('opacity-0');
+            hideOverlay.classList.add('opacity-100');
+            
+            typeArea.value = ''; 
+            typeArea.focus();
+            if(typeof resetStats === 'function') resetStats();
+        });
+
+        let currentPracticeMode = null; // 현재 어떤 모드로 연습 중인지 저장 ('quote' 또는 'practice')
+
+        // 숨기기 모드일 때 보이지 않더라도 실제 값이 쌓이는 것을 방지 및 자동 넘어가기 기능
+        typeArea.addEventListener('input', () => {
+            if (isHideMode) {
+                typeArea.value = '';
+            }
+            updateStats(); // 타자 칠 때마다 정확도 즉시 갱신
+            
+            // 제시된 연습 문장과 정확히 일치하는지 확인하여 자동으로 다음 문장 불러오기
+            const practiceDisplay = document.getElementById('practice-display');
+            if (!practiceDisplay.classList.contains('hidden')) {
+                const practiceTextStr = document.getElementById('practice-text').innerText.replace(/\r\n/g, '\n');
+                const currentTextStr = typeArea.value.replace(/\r\n/g, '\n');
+                
+                // 입력한 문장이 제시된 문장과 완벽히 일치할 때
+                if (practiceTextStr.length > 0 && currentTextStr === practiceTextStr) {
+                    const btnQuote = document.getElementById('btn-generate-quote');
+                    const btnPractice = document.getElementById('btn-generate-practice');
+                    
+                    // 이미 다음 문장을 불러오고 있는 중이면 중복 실행 방지
+                    if (btnQuote.disabled || btnPractice.disabled) return;
+                    
+                    // 입력창을 비워주고 자동으로 버튼 클릭 효과 발동
+                    typeArea.value = '';
+                    
+                    if (currentPracticeMode === 'quote') {
+                        btnQuote.click();
+                    } else if (currentPracticeMode === 'practice') {
+                        btnPractice.click();
+                    }
+                }
+            }
+        });
+
+        // ==========================================
+        // 타자 속도 및 정확도 통계 로직
+        // ==========================================
+        let startTime = null;
+        let validKeystrokes = 0;
+        let timerInterval = null;
+        let isTyping = false;
+
+        function updateStats() {
+            if (!startTime && !isTyping) return;
+            
+            const now = Date.now();
+            const elapsedSec = (now - startTime) / 1000;
+            const elapsedMin = elapsedSec / 60;
+            
+            // 시간 표시 포맷팅
+            const m = Math.floor(elapsedSec / 60).toString().padStart(2, '0');
+            const s = Math.floor(elapsedSec % 60).toString().padStart(2, '0');
+            document.getElementById('stat-time').innerText = `${m}:${s}`;
+            
+            // 타수(CPM) 계산 (실제 입력된 타수를 분 단위로 환산)
+            let cpm = 0;
+            if (elapsedMin > 0) {
+                cpm = Math.round(validKeystrokes / elapsedMin);
+            }
+            document.getElementById('stat-cpm').innerText = cpm;
+            
+            // 정확도 계산 (연습 문장이 화면에 있을 때만 작동)
+            const practiceDisplay = document.getElementById('practice-display');
+            const practiceText = document.getElementById('practice-text').innerText.replace(/\r\n/g, '\n');
+            const currentText = document.getElementById('type-area').value.replace(/\r\n/g, '\n');
+            
+            if (!practiceDisplay.classList.contains('hidden') && practiceText && currentText.length > 0) {
+                let correctCount = 0;
+                // 현재까지 입력된 텍스트의 길이만큼 비교
+                for (let i = 0; i < currentText.length; i++) {
+                    if (i < practiceText.length && currentText[i] === practiceText[i]) {
+                        correctCount++;
+                    }
+                }
+                const acc = Math.round((correctCount / currentText.length) * 100);
+                document.getElementById('stat-acc').innerText = acc;
+            } else {
+                document.getElementById('stat-acc').innerText = "100";
+            }
+        }
+
+        function resetStats() {
+            startTime = null;
+            validKeystrokes = 0;
+            isTyping = false;
+            clearInterval(timerInterval);
+            document.getElementById('stat-time').innerText = "00:00";
+            document.getElementById('stat-cpm').innerText = "0";
+            document.getElementById('stat-acc').innerText = "100";
+            document.getElementById('type-area').value = '';
+            document.getElementById('type-area').focus();
+        }
+
+        document.getElementById('btn-reset-stats').addEventListener('click', resetStats);
+
+        // 현재 눌려있는 키 상태를 추적 (여러 키 동시 입력 대비)
+        const activeKeys = new Set();
+
+        // 키를 눌렀을 때
+        window.addEventListener('keydown', (e) => {
+            // 통계: 타수 측정 (텍스트 영역에 입력 중일 때만)
+            if (document.activeElement.id === 'type-area') {
+                // 수정자 키(Ctrl, Shift 등)가 아닌 실제 입력 키(문자, 숫자, 스페이스)만 타수로 계산
+                if (e.key.length === 1 || e.code === 'Space') {
+                    if (!isTyping) {
+                        isTyping = true;
+                        startTime = Date.now();
+                        timerInterval = setInterval(updateStats, 500); // 0.5초마다 시간 및 타수 갱신
+                    }
+                    validKeystrokes++;
+                }
+            }
+
+            // 브라우저 단축키 차단 옵션 활성화 시 (Ctrl, Alt, Meta 키 조합 차단)
+            if (blockShortcuts && (e.ctrlKey || e.metaKey || e.altKey)) {
+                // 개발자 도구(F12) 등 최소한의 예외를 제외하고 모두 차단
+                if (e.code !== 'F12') {
+                    e.preventDefault();
+                }
+            }
+
+            // F1~F12 키의 브라우저 기본 동작 방지 (F5(새로고침), F12(개발자도구)는 편의상 허용 - 단축키 차단 시 F5도 막힘)
+            if (e.code.match(/^F[1-9]$|^F1[0-2]$/)) {
+                if (e.code !== 'F12' && !(e.code === 'F5' && !blockShortcuts)) {
+                    e.preventDefault();
+                }
+            }
+
+            // 입력창 밖에서 Backspace 눌러서 뒤로가기 되는 것 방지
+            if(e.code === 'Backspace' && document.activeElement.id !== 'type-area') {
+                e.preventDefault();
+            }
+            // Tab 키를 눌렀을 때 포커스가 빠져나가는 것을 방지하고 띄어쓰기처럼 추가
+            if (e.code === 'Tab') {
+                e.preventDefault();
+                const textArea = document.getElementById('type-area');
+                if (document.activeElement === textArea) {
+                    const start = textArea.selectionStart;
+                    const end = textArea.selectionEnd;
+                    textArea.value = textArea.value.substring(0, start) + "    " + textArea.value.substring(end);
+                    textArea.selectionStart = textArea.selectionEnd = start + 4;
+                }
+            }
+
+            // OS 별 한영/한자 키 코드 예외 처리
+            let code = e.code;
+            if (e.key === 'HangulMode' || e.code === 'Lang1') code = 'AltRight';
+            if (e.key === 'HanjaMode' || e.code === 'Lang2') code = 'ControlRight';
+
+            const keyEl = document.getElementById(`key-${code}`);
+            if (keyEl && !activeKeys.has(code)) {
+                activeKeys.add(code);
+                keyEl.classList.add('active');
+                
+                // 타건음 재생
+                playTypingSound();
+            }
+        });
+
+        // 키보드에서 손을 뗐을 때
+        window.addEventListener('keyup', (e) => {
+            let code = e.code;
+            if (e.key === 'HangulMode' || e.code === 'Lang1') code = 'AltRight';
+            if (e.key === 'HanjaMode' || e.code === 'Lang2') code = 'ControlRight';
+
+            const keyEl = document.getElementById(`key-${code}`);
+            if (keyEl) {
+                activeKeys.delete(code);
+                keyEl.classList.remove('active');
+            }
+        });
+
+        // 입력창을 클릭하지 않아도 창 전체를 누르면 자동으로 텍스트 상자로 포커스 유도
+        document.body.addEventListener('click', (e) => {
+            // 설정 패널 외부를 클릭하면 설정 패널 닫기
+            if (!settingsPanel.classList.contains('hidden') && 
+                !settingsPanel.contains(e.target) && 
+                !settingsToggleBtn.contains(e.target)) {
+                settingsPanel.classList.add('hidden');
+                settingsPanel.classList.remove('flex');
+            }
+
+            // textarea나 설정 패널/버튼을 클릭한 게 아니라면 텍스트박스로 포커스 이동
+            if (e.target.tagName !== 'TEXTAREA' && 
+                e.target.closest('button') === null && // 버튼 클릭 시 포커스 뺏김 방지
+                !settingsPanel.contains(e.target) && 
+                !settingsToggleBtn.contains(e.target)) {
+                document.getElementById('type-area').focus();
+            }
+        });
+
+        // ==========================================
+        // Gemini AI API 기능 통합
+        // ==========================================
+        const geminiApiKey = ""; // 런타임에 환경변수로 주입됩니다.
+
+        async function callGeminiAPI(prompt, buttonElement, originalText) {
+            buttonElement.innerText = "⏳ 처리 중...";
+            buttonElement.disabled = true;
+            buttonElement.classList.add('opacity-70', 'cursor-not-allowed');
+            
+            let retries = 5;
+            let delay = 1000;
+            
+            while(retries > 0) {
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiApiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }]
+                        })
+                    });
+                    
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    
+                    const data = await response.json();
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    
+                    buttonElement.innerHTML = originalText;
+                    buttonElement.disabled = false;
+                    buttonElement.classList.remove('opacity-70', 'cursor-not-allowed');
+                    return text;
+                    
+                } catch (error) {
+                    retries--;
+                    if (retries === 0) {
+                        buttonElement.innerHTML = originalText;
+                        buttonElement.disabled = false;
+                        buttonElement.classList.remove('opacity-70', 'cursor-not-allowed');
+                        showAlert("AI 요청 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+                        return null;
+                    }
+                    await new Promise(res => setTimeout(res, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        // 0. 한 문장 쓰기 버튼 이벤트 (명언, 속담 등)
+        document.getElementById('btn-generate-quote').addEventListener('click', async () => {
+            currentPracticeMode = 'quote'; // 현재 모드 저장
+            const prompt = "유명한 명언, 격언, 속담, 또는 관용어구 중에서 랜덤으로 짧고 좋은 문장 딱 1개만 출력해줘. 다른 부가 설명이나 인사말, 따옴표 없이 오직 문장만 텍스트로 출력해줘.";
+            const result = await callGeminiAPI(prompt, document.getElementById('btn-generate-quote'), "✨ 한 문장 쓰기");
+            if (result) {
+                const practiceDisplay = document.getElementById('practice-display');
+                const practiceText = document.getElementById('practice-text');
+                
+                // 생성된 문장을 별도의 창에 띄움
+                practiceText.innerText = result.trim();
+                practiceDisplay.classList.remove('hidden');
+                
+                // 연습문장이 새로 생겼으므로 통계와 타이핑 창을 깔끔하게 리셋
+                resetStats();
+            }
+        });
+
+        // 1. 연습 문장 생성 버튼 이벤트
+        document.getElementById('btn-generate-practice').addEventListener('click', async () => {
+            currentPracticeMode = 'practice'; // 현재 모드 저장
+            const prompt = "한국어 타자 연습을 하기 좋은 감성적이고 예쁜 길이의 문장 3개를 만들어줘. 각 문장은 줄바꿈으로 구분하고, 다른 부가 설명이나 인사말 없이 오직 문장만 텍스트로 출력해줘.";
+            const result = await callGeminiAPI(prompt, document.getElementById('btn-generate-practice'), "✨ 연습 문장 생성");
+            if (result) {
+                const practiceDisplay = document.getElementById('practice-display');
+                const practiceText = document.getElementById('practice-text');
+                
+                // 생성된 문장을 별도의 창에 띄움
+                practiceText.innerText = result.trim();
+                practiceDisplay.classList.remove('hidden');
+                
+                // 연습문장이 새로 생겼으므로 통계와 타이핑 창을 깔끔하게 리셋
+                resetStats();
+            }
+        });
+
+        // 연습 문장 닫기 버튼 이벤트
+        document.getElementById('btn-close-practice').addEventListener('click', () => {
+            currentPracticeMode = null; // 모드 초기화
+            document.getElementById('practice-display').classList.add('hidden');
+            document.getElementById('type-area').focus();
+        });
+
+        // 2. 글 이어쓰기 버튼 이벤트
+        document.getElementById('btn-continue-writing').addEventListener('click', async () => {
+            const ta = document.getElementById('type-area');
+            const userText = ta.value.trim();
+            if (!userText) {
+                showAlert("먼저 이어서 쓸 글을 입력해주세요!");
+                return;
+            }
+            const prompt = `사용자가 작성한 다음 글의 문맥과 어조를 파악해서, 자연스럽게 이어지는 1~2문장을 추가로 작성해줘. 부가 설명 없이 이어지는 문장만 텍스트로 출력해.\n\n사용자 글: ${userText}`;
+            const result = await callGeminiAPI(prompt, document.getElementById('btn-continue-writing'), "✨ 이어쓰기");
+            if (result) {
+                ta.value = userText + (userText.endsWith('.') || userText.endsWith('!') || userText.endsWith('?') ? ' ' : '. ') + result.trim();
+                ta.focus();
+            }
+        });
+
+        // 3. 맞춤법 교정 버튼 이벤트
+        document.getElementById('btn-fix-grammar').addEventListener('click', async () => {
+            const ta = document.getElementById('type-area');
+            const userText = ta.value.trim();
+            if (!userText) {
+                showAlert("먼저 교정할 글을 입력해주세요!");
+                return;
+            }
+            const prompt = `다음 텍스트의 맞춤법, 띄어쓰기, 문법을 완벽하게 교정해줘. 교정된 텍스트만 결과로 출력하고, 다른 부가 설명이나 인사말은 절대 하지마.\n\n원본: ${userText}`;
+            const result = await callGeminiAPI(prompt, document.getElementById('btn-fix-grammar'), "✨ 맞춤법 교정");
+            if (result) {
+                ta.value = result.trim();
+                ta.focus();
+            }
+        });
+
+    </script>
+</body>
+</html>
